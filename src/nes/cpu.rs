@@ -554,28 +554,27 @@ impl CPU {
                     let v = if read { self.read_mem(addr) as u16 } else { 0xDEAD };
                     (v, Some(addr), 2, false)
                 }
-                // AbsoluteX => {
-                //     let base_addr = self.peek16(ptr);
-                //     let addr = base_addr.wrapping_add(self.x as u16);
-                //     let v = if read { self.peek(addr) as u16 } else { 0xDEAD };
-                //     (v, Some(addr), 2, true)
-                // }
-                // AbsoluteY => {
-                //     let addr = self.peek16(ptr).wrapping_add(self.y as u16);
-                //     let v = if read { self.peek(addr) as u16 } else { 0xDEAD };
-                //     (v, Some(addr), 2, true)
-                // }
-                // Indirect => {
-                //     let addr = self.peek16(ptr);
-                //     let jmp_ptr = self.peek16_pagewrap(addr);
-                //     (0xDEAD, Some(jmp_ptr), 2, false)
-                // }
-                // IndirectX => {
-                //     let zp_addr = self.peek(ptr).wrapping_add(self.x);
-                //     let addr = self.peek_zero16(zp_addr);
-                //     let v = if read { self.peek(addr) as u16 } else { 0xDEAD };
-                //     (v, Some(addr), 1, false)
-                // }
+                AbsoluteX => {
+                    let addr = self.read_mem_16(ptr).wrapping_add(self.X as u16);
+                    let v = if read { self.read_mem(addr) as u16 } else { 0xDEAD };
+                    (v, Some(addr), 2, true)
+                }
+                AbsoluteY => {
+                    let addr = self.read_mem_16(ptr).wrapping_add(self.Y as u16);
+                    let v = if read { self.read_mem(addr) as u16 } else { 0xDEAD };
+                    (v, Some(addr), 2, true)
+                }
+                Indirect => {
+                    let addr = self.read_mem_16(ptr);
+                    let result_ptr = self.read_mem_16(addr);
+                    (0xDEAD, Some(result_ptr), 2, false)
+                }
+                IndirectX => {
+                    let zp_addr = self.read_mem(ptr).wrapping_add(self.X) as u16;
+                    let addr = self.read_mem_16(zp_addr);
+                    let v = if read { self.read_mem_16(addr) as u16 } else { 0xDEAD };
+                    (v, Some(addr), 1, false)
+                }
                 // IndirectY => {
                 //     let zp_addr = self.peek(ptr);
                 //     let addr = self.peek_zero16(zp_addr).wrapping_add(self.y as u16);
@@ -711,6 +710,14 @@ mod test {
         assert_eq!(cpu.flags.bits, 0b000_000);
         assert_eq!(cpu.A, 5);
         assert_eq!(cpu.A, cpu.read_mem(0x00));
+    }
+    #[test]
+    fn test_indirect_x_lda() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run_programm(vec![0xa2, 0x01, 0xa9, 0x05, 0x85, 0x01, 0xa9, 0x07, 0x85, 0x02, 0xa0, 0x0a, 0x8c, 0x05, 0x07, 0xa1, 0x00]);
+        assert_eq!(cpu.flags.bits, 0b000_000);
+        assert_eq!(cpu.Y, cpu.A);
+        assert_eq!(cpu.A, 0x0a);
     }
     #[test]
     fn test_zero_page_x() {
